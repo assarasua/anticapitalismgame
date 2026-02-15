@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Juego para que Gurutz sea menos anticapitalista</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Serif:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-1" aria-hidden="true"></div>
+    <div class="bg-shape bg-shape-2" aria-hidden="true"></div>
+
+    <header class="hero">
+      <p class="eyebrow">Aprende jugando</p>
+      <h1>Juego para que Gurutz sea menos anticapitalista</h1>
+      <p class="personal-note">
+        Para <strong id="friendNameHero">Gurutz Gorrotxategi</strong>: mira
+        datos reales, compara modelos y saca tus propias conclusiones.
+      </p>
+      <p class="hero-copy">
+        Un recorrido en modo juego sobre capitalismo, socialismo y economías
+        mixtas, con ejemplos históricos de verdad.
+      </p>
+
+      <section class="hud" aria-label="Progreso del jugador">
+        <article class="hud-card">
+          <p class="hud-label">Progreso</p>
+          <div
+            class="progress-bar"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <div id="progressFill"></div>
+          </div>
+          <p id="progressText" class="hud-value">0%</p>
+        </article>
+
+        <article class="hud-card">
+          <p class="hud-label">XP</p>
+          <p id="xpText" class="hud-value">0 XP</p>
+          <p id="rankText" class="hud-subvalue">Rango: Novato</p>
+        </article>
+
+        <article class="hud-card">
+          <p class="hud-label">Insignias</p>
+          <div id="badgeList" class="badge-list"></div>
+        </article>
+      </section>
+
+      <div class="hero-actions">
+        <button id="resetBtn" class="btn btn-secondary" type="button">
+          Empezar de cero
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section
+        class="levels"
+        id="levelsContainer"
+        aria-label="Niveles de aprendizaje"
+      ></section>
+
+      <section class="panel hidden" id="lessonPanel" aria-live="polite">
+        <div class="panel-header">
+          <h2 id="lessonTitle"></h2>
+          <p id="lessonSummary"></p>
+        </div>
+        <div id="lessonBody"></div>
+        <div class="panel-actions">
+          <button id="completeBtn" class="btn">Terminar nivel</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Modo personalizado para <strong id="friendNameFooter">Gurutz Gorrotxategi</strong>.
+      </p>
+      <p>
+        Este proyecto es para debatir con cabeza: compara sistemas económicos
+        con casos reales y evidencia.
+      </p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
