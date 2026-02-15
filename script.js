@@ -472,6 +472,10 @@ const state = {
   challengePassed: {},
   challengeResults: {},
   xp: 0,
+  uiPrefs: {
+    sound: true,
+    confetti: true,
+  },
 };
 
 const levelsContainer = document.getElementById("levelsContainer");
@@ -481,6 +485,8 @@ const lessonSummary = document.getElementById("lessonSummary");
 const lessonBody = document.getElementById("lessonBody");
 const completeBtn = document.getElementById("completeBtn");
 const resetBtn = document.getElementById("resetBtn");
+const soundToggleBtn = document.getElementById("soundToggleBtn");
+const confettiToggleBtn = document.getElementById("confettiToggleBtn");
 const progressFill = document.getElementById("progressFill");
 const progressText = document.getElementById("progressText");
 const progressBar = document.querySelector(".progress-bar");
@@ -489,6 +495,10 @@ const rankText = document.getElementById("rankText");
 const badgeList = document.getElementById("badgeList");
 const friendNameHero = document.getElementById("friendNameHero");
 const friendNameFooter = document.getElementById("friendNameFooter");
+const confettiCanvas = document.getElementById("confettiCanvas");
+
+let audioCtx = null;
+let confettiRaf = null;
 
 function initPersonalization() {
   document.title = SITE_NAME;
@@ -513,6 +523,7 @@ function saveState() {
     challengePassed: state.challengePassed,
     challengeResults: state.challengeResults,
     xp: state.xp,
+    uiPrefs: state.uiPrefs,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
@@ -529,12 +540,17 @@ function loadState() {
     state.challengePassed = parsed.challengePassed || {};
     state.challengeResults = parsed.challengeResults || {};
     state.xp = Number(parsed.xp) || 0;
+    state.uiPrefs = {
+      sound: parsed.uiPrefs?.sound ?? true,
+      confetti: parsed.uiPrefs?.confetti ?? true,
+    };
   } catch (error) {
     localStorage.removeItem(STORAGE_KEY);
   }
 }
 
 function resetState() {
+  const currentPrefs = { ...state.uiPrefs };
   state.unlocked = 1;
   state.completed = new Set();
   state.activeLevel = null;
@@ -542,9 +558,129 @@ function resetState() {
   state.challengePassed = {};
   state.challengeResults = {};
   state.xp = 0;
+  state.uiPrefs = currentPrefs;
   localStorage.removeItem(STORAGE_KEY);
+  saveState();
   lessonPanel.classList.add("hidden");
   renderAll();
+}
+
+function ensureAudioContext() {
+  if (!state.uiPrefs.sound) return null;
+  if (typeof window.AudioContext === "undefined" && typeof window.webkitAudioContext === "undefined") {
+    return null;
+  }
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctx();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playTone({ frequency, duration, type = "sine", volume = 0.04, delay = 0 }) {
+  if (!state.uiPrefs.sound) return;
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, now);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + duration + 0.02);
+}
+
+function playSound(name) {
+  if (!state.uiPrefs.sound) return;
+  if (name === "click") {
+    playTone({ frequency: 480, duration: 0.08, type: "triangle", volume: 0.025 });
+  } else if (name === "success") {
+    playTone({ frequency: 540, duration: 0.08, type: "triangle", volume: 0.03 });
+    playTone({ frequency: 820, duration: 0.12, type: "triangle", volume: 0.04, delay: 0.08 });
+  } else if (name === "wrong") {
+    playTone({ frequency: 220, duration: 0.1, type: "sawtooth", volume: 0.03 });
+  } else if (name === "levelup") {
+    playTone({ frequency: 520, duration: 0.08, type: "triangle", volume: 0.03 });
+    playTone({ frequency: 760, duration: 0.1, type: "triangle", volume: 0.04, delay: 0.08 });
+    playTone({ frequency: 1020, duration: 0.14, type: "triangle", volume: 0.045, delay: 0.18 });
+  }
+}
+
+function resizeConfettiCanvas() {
+  if (!confettiCanvas) return;
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+
+function fireConfetti() {
+  if (!state.uiPrefs.confetti || !confettiCanvas) return;
+  resizeConfettiCanvas();
+  const ctx = confettiCanvas.getContext("2d");
+  if (!ctx) return;
+
+  const colors = ["#ff5fa2", "#4ee7ff", "#b2ff66", "#ffd166", "#c77dff"];
+  const pieces = Array.from({ length: 110 }, () => ({
+    x: Math.random() * confettiCanvas.width,
+    y: -20 - Math.random() * confettiCanvas.height * 0.2,
+    vx: -2 + Math.random() * 4,
+    vy: 2 + Math.random() * 4.2,
+    size: 3 + Math.random() * 5,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    rot: Math.random() * Math.PI,
+    spin: -0.16 + Math.random() * 0.32,
+  }));
+
+  let start = null;
+  const duration = 1200;
+
+  const tick = (ts) => {
+    if (!start) start = ts;
+    const elapsed = ts - start;
+    ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+
+    pieces.forEach((p) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.035;
+      p.rot += p.spin;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+      ctx.restore();
+    });
+
+    if (elapsed < duration) {
+      confettiRaf = window.requestAnimationFrame(tick);
+    } else {
+      ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      confettiRaf = null;
+    }
+  };
+
+  if (confettiRaf) {
+    window.cancelAnimationFrame(confettiRaf);
+  }
+  confettiRaf = window.requestAnimationFrame(tick);
+}
+
+function updateFxButtons() {
+  if (soundToggleBtn) {
+    soundToggleBtn.textContent = `Sonido: ${state.uiPrefs.sound ? "ON" : "OFF"}`;
+  }
+  if (confettiToggleBtn) {
+    confettiToggleBtn.textContent = `Confetti: ${state.uiPrefs.confetti ? "ON" : "OFF"}`;
+  }
 }
 
 function updateProgress() {
@@ -665,6 +801,7 @@ function renderQuizSet(level) {
         if (correct) {
           btn.classList.add("correct");
           feedback.textContent = `Bien jugado: ${quiz.explain}`;
+          playSound("success");
           if (!state.quizPassed[level.id]) state.quizPassed[level.id] = {};
           state.quizPassed[level.id][quizIndex] = true;
           buttons.forEach((b) => {
@@ -676,6 +813,7 @@ function renderQuizSet(level) {
         } else {
           btn.classList.add("wrong");
           feedback.textContent = "Casi. Prueba otra opción.";
+          playSound("wrong");
         }
       });
 
@@ -824,6 +962,7 @@ function renderChallenge(level) {
   }
 
   evaluateBtn.addEventListener("click", () => {
+    playSound("click");
     const selections = {};
     const breakdown = {};
 
@@ -850,6 +989,7 @@ function renderChallenge(level) {
 
     state.challengePassed[level.id] = true;
     state.challengeResults[level.id] = result;
+    playSound("success");
     saveState();
     renderHud();
     renderSummary(result);
@@ -907,6 +1047,8 @@ function completeLevel() {
 
   if (!wasComplete) {
     state.xp += XP_PER_LEVEL;
+    playSound("levelup");
+    fireConfetti();
   }
 
   if (id === state.unlocked && id < levels.length) {
@@ -921,6 +1063,7 @@ function renderAll() {
   renderLevels();
   updateProgress();
   renderHud();
+  updateFxButtons();
 }
 
 levelsContainer.addEventListener("click", (event) => {
@@ -928,17 +1071,48 @@ levelsContainer.addEventListener("click", (event) => {
   if (!(target instanceof HTMLButtonElement)) return;
 
   const id = Number(target.dataset.levelId);
+  playSound("click");
   openLevel(id);
 });
 
 completeBtn.addEventListener("click", completeLevel);
 
+if (soundToggleBtn) {
+  soundToggleBtn.addEventListener("click", () => {
+    state.uiPrefs.sound = !state.uiPrefs.sound;
+    saveState();
+    updateFxButtons();
+    if (state.uiPrefs.sound) {
+      playSound("click");
+    }
+  });
+}
+
+if (confettiToggleBtn) {
+  confettiToggleBtn.addEventListener("click", () => {
+    state.uiPrefs.confetti = !state.uiPrefs.confetti;
+    saveState();
+    updateFxButtons();
+    playSound("click");
+  });
+}
+
 resetBtn.addEventListener("click", () => {
+  playSound("click");
   const confirmed = window.confirm("¿Quieres reiniciar todo el progreso y XP?");
   if (confirmed) {
     resetState();
   }
 });
+
+window.addEventListener("resize", resizeConfettiCanvas);
+window.addEventListener(
+  "pointerdown",
+  () => {
+    ensureAudioContext();
+  },
+  { once: true },
+);
 
 loadState();
 initPersonalization();

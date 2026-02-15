@@ -27,6 +27,11 @@
         Un recorrido en modo juego sobre capitalismo, socialismo y economías
         mixtas, con ejemplos históricos de verdad.
       </p>
+      <div class="vibe-tags" aria-hidden="true">
+        <span class="vibe-tag">debate mode</span>
+        <span class="vibe-tag">hot takes + datos</span>
+        <span class="vibe-tag">level up</span>
+      </div>
 
       <section class="hud" aria-label="Progreso del jugador">
         <article class="hud-card">
@@ -56,6 +61,12 @@
       </section>
 
       <div class="hero-actions">
+        <button id="soundToggleBtn" class="btn btn-secondary" type="button">
+          Sonido: ON
+        </button>
+        <button id="confettiToggleBtn" class="btn btn-secondary" type="button">
+          Confetti: ON
+        </button>
         <button id="resetBtn" class="btn btn-secondary" type="button">
           Empezar de cero
         </button>
@@ -91,6 +102,7 @@
       </p>
     </footer>
 
+    <canvas id="confettiCanvas" aria-hidden="true"></canvas>
     <script src="script.js"></script>
   </body>
 </html>
