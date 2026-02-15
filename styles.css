@@ -339,7 +339,7 @@ h1 {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 .panel-header h2 {
