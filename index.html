@@ -64,6 +64,9 @@
         <button id="soundToggleBtn" class="btn btn-secondary" type="button">
           Sonido: ON
         </button>
+        <button id="announcerToggleBtn" class="btn btn-secondary" type="button">
+          Voz: ON
+        </button>
         <button id="confettiToggleBtn" class="btn btn-secondary" type="button">
           Confetti: ON
         </button>
@@ -74,21 +77,55 @@
     </header>
 
     <main>
-      <section
-        class="levels"
-        id="levelsContainer"
-        aria-label="Niveles de aprendizaje"
-      ></section>
+      <section class="stage-tracker" aria-label="Progreso por etapas">
+        <div class="stage-top">
+          <p id="stageLabel">Paso 1 de 3: Briefing</p>
+          <p id="stagePercent">33%</p>
+        </div>
+        <div class="stage-bar">
+          <div id="stageFill"></div>
+        </div>
+      </section>
 
-      <section class="panel hidden" id="lessonPanel" aria-live="polite">
-        <div class="panel-header">
-          <h2 id="lessonTitle"></h2>
-          <p id="lessonSummary"></p>
-        </div>
-        <div id="lessonBody"></div>
-        <div class="panel-actions">
-          <button id="completeBtn" class="btn">Terminar nivel</button>
-        </div>
+      <section class="game-screen active-screen" id="screenIntro">
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Briefing inicial</h2>
+            <p>
+              Esto va por fases: primero pillas el contexto, luego eliges nivel
+              y después completas la misión.
+            </p>
+          </div>
+          <div class="screen-actions">
+            <button id="startGameBtn" class="btn" type="button">
+              Empezar partida
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <section class="game-screen" id="screenMap">
+        <section
+          class="levels"
+          id="levelsContainer"
+          aria-label="Niveles de aprendizaje"
+        ></section>
+      </section>
+
+      <section class="game-screen" id="screenLevel">
+        <section class="panel hidden" id="lessonPanel" aria-live="polite">
+          <div class="panel-header">
+            <h2 id="lessonTitle"></h2>
+            <p id="lessonSummary"></p>
+          </div>
+          <div id="lessonBody"></div>
+          <div class="panel-actions">
+            <button id="backToMapBtn" class="btn btn-secondary" type="button">
+              Volver al mapa
+            </button>
+            <button id="completeBtn" class="btn">Terminar nivel</button>
+          </div>
+        </section>
       </section>
     </main>
 
@@ -101,6 +138,25 @@
         con casos reales y evidencia.
       </p>
     </footer>
+
+    <section id="cinematicOverlay" class="cinematic-overlay hidden" aria-live="polite">
+      <article class="cinematic-card">
+        <p class="cinematic-kicker">Transición</p>
+        <h3 id="cinematicText">Cargando siguiente pantalla...</h3>
+        <div class="cinematic-bar">
+          <span class="cinematic-bar-fill"></span>
+        </div>
+      </article>
+    </section>
+
+    <section id="unlockSplash" class="unlock-splash hidden" aria-live="polite">
+      <article class="unlock-card">
+        <p class="unlock-kicker">Nuevo desbloqueo</p>
+        <h3 id="unlockTitle">Nivel desbloqueado</h3>
+        <p id="unlockText">Ya puedes entrar al siguiente nivel.</p>
+        <button id="unlockCloseBtn" class="btn" type="button">Seguir</button>
+      </article>
+    </section>
 
     <canvas id="confettiCanvas" aria-hidden="true"></canvas>
     <script src="script.js"></script>
