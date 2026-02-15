@@ -474,7 +474,6 @@ const state = {
   xp: 0,
   uiPrefs: {
     sound: true,
-    announcer: true,
     confetti: true,
   },
 };
@@ -489,7 +488,6 @@ const startGameBtn = document.getElementById("startGameBtn");
 const backToMapBtn = document.getElementById("backToMapBtn");
 const resetBtn = document.getElementById("resetBtn");
 const soundToggleBtn = document.getElementById("soundToggleBtn");
-const announcerToggleBtn = document.getElementById("announcerToggleBtn");
 const confettiToggleBtn = document.getElementById("confettiToggleBtn");
 const screenIntro = document.getElementById("screenIntro");
 const screenMap = document.getElementById("screenMap");
@@ -497,8 +495,6 @@ const screenLevel = document.getElementById("screenLevel");
 const stageLabel = document.getElementById("stageLabel");
 const stagePercent = document.getElementById("stagePercent");
 const stageFill = document.getElementById("stageFill");
-const cinematicOverlay = document.getElementById("cinematicOverlay");
-const cinematicText = document.getElementById("cinematicText");
 const unlockSplash = document.getElementById("unlockSplash");
 const unlockTitle = document.getElementById("unlockTitle");
 const unlockText = document.getElementById("unlockText");
@@ -517,8 +513,6 @@ let audioCtx = null;
 let confettiRaf = null;
 let activeScreen = "intro";
 let unlockTimer = null;
-let cinematicTimer = null;
-let selectedVoice = null;
 
 function initPersonalization() {
   document.title = SITE_NAME;
@@ -562,7 +556,6 @@ function loadState() {
     state.xp = Number(parsed.xp) || 0;
     state.uiPrefs = {
       sound: parsed.uiPrefs?.sound ?? true,
-      announcer: parsed.uiPrefs?.announcer ?? true,
       confetti: parsed.uiPrefs?.confetti ?? true,
     };
   } catch (error) {
@@ -601,71 +594,6 @@ function ensureAudioContext() {
   return audioCtx;
 }
 
-function resolveSpanishVoice() {
-  if (!("speechSynthesis" in window)) return null;
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices || voices.length === 0) return null;
-
-  const preferred =
-    voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("es")) ||
-    voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("en")) ||
-    voices[0];
-
-  return preferred || null;
-}
-
-function stopSpeech() {
-  if (!("speechSynthesis" in window)) return;
-  if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-    window.speechSynthesis.cancel();
-  }
-}
-
-function getAnnouncerProfile(mode, levelId = null) {
-  const isBoss = levelId === 5;
-  const base = { rate: 1.05, pitch: 1.02, volume: 0.95, prefix: "" };
-
-  if (mode === "intro") {
-    return { ...base, rate: 0.98, pitch: 0.95, prefix: "Atención, jugador." };
-  }
-  if (mode === "enter") {
-    return isBoss
-      ? { ...base, rate: 0.93, pitch: 0.85, prefix: "Alerta máxima." }
-      : { ...base, rate: 1.0, pitch: 0.96, prefix: "Preparando misión." };
-  }
-  if (mode === "complete") {
-    return isBoss
-      ? { ...base, rate: 1.12, pitch: 1.12, prefix: "Victoria total." }
-      : { ...base, rate: 1.08, pitch: 1.08, prefix: "Misión cumplida." };
-  }
-  if (mode === "back") {
-    return { ...base, rate: 1.0, pitch: 0.92, prefix: "Retirada táctica." };
-  }
-
-  return base;
-}
-
-function speakCinematic(text, mode = "enter", levelId = null) {
-  if (!state.uiPrefs.announcer) return;
-  if (!("speechSynthesis" in window) || typeof window.SpeechSynthesisUtterance === "undefined") {
-    return;
-  }
-
-  stopSpeech();
-  if (!selectedVoice) {
-    selectedVoice = resolveSpanishVoice();
-  }
-
-  const profile = getAnnouncerProfile(mode, levelId);
-  const speech = profile.prefix ? `${profile.prefix} ${text}` : text;
-  const utterance = new SpeechSynthesisUtterance(speech);
-  utterance.lang = selectedVoice?.lang || "es-ES";
-  if (selectedVoice) utterance.voice = selectedVoice;
-  utterance.rate = profile.rate;
-  utterance.pitch = profile.pitch;
-  utterance.volume = profile.volume;
-  window.speechSynthesis.speak(utterance);
-}
 
 function playTone({ frequency, duration, type = "sine", volume = 0.04, delay = 0 }) {
   if (!state.uiPrefs.sound) return;
@@ -765,9 +693,6 @@ function updateFxButtons() {
   if (soundToggleBtn) {
     soundToggleBtn.textContent = `Sonido: ${state.uiPrefs.sound ? "ON" : "OFF"}`;
   }
-  if (announcerToggleBtn) {
-    announcerToggleBtn.textContent = `Voz: ${state.uiPrefs.announcer ? "ON" : "OFF"}`;
-  }
   if (confettiToggleBtn) {
     confettiToggleBtn.textContent = `Confetti: ${state.uiPrefs.confetti ? "ON" : "OFF"}`;
   }
@@ -801,68 +726,6 @@ function updateStageProgress() {
   if (stageLabel) stageLabel.textContent = stage.label;
   if (stagePercent) stagePercent.textContent = `${stage.percent}%`;
   if (stageFill) stageFill.style.width = `${stage.percent}%`;
-}
-
-function getCinematicMessage(action, levelId = null) {
-  const byLevel = {
-    1: {
-      enter: "Abriendo laboratorio de mercados...",
-      complete: "Misión 1 cerrada. Subiendo al mapa...",
-      back: "Saliendo del laboratorio de mercados...",
-    },
-    2: {
-      enter: "Entrando a la sala de planificación central...",
-      complete: "Misión 2 completada. Recalculando ruta...",
-      back: "Volviendo desde la sala de planificación...",
-    },
-    3: {
-      enter: "Activando modo economías mixtas...",
-      complete: "Misión 3 validada. Vamos al mapa...",
-      back: "Saliendo del modo economías mixtas...",
-    },
-    4: {
-      enter: "Cargando simulador de políticas...",
-      complete: "Misión 4 cerrada. Guardando build económica...",
-      back: "Saliendo del simulador de políticas...",
-    },
-    5: {
-      enter: "Entrando al boss final: modo desafío...",
-      complete: "Boss derrotado. Registrando puntuación final...",
-      back: "Pausando boss final y volviendo al mapa...",
-    },
-  };
-
-  const generic = {
-    intro: "Iniciando partida...",
-    enter: "Entrando en misión...",
-    complete: "Subiendo progreso al mapa...",
-    back: "Volviendo al mapa...",
-  };
-
-  if (!levelId || !byLevel[levelId]) return generic[action] || generic.enter;
-  return byLevel[levelId][action] || generic[action] || generic.enter;
-}
-
-function playCinematic(message, nextScreen, duration = 820, mode = "enter", levelId = null) {
-  if (!cinematicOverlay || !cinematicText) {
-    switchScreen(nextScreen);
-    return;
-  }
-
-  cinematicText.textContent = message;
-  cinematicOverlay.classList.remove("hidden");
-  speakCinematic(message, mode, levelId);
-
-  if (cinematicTimer) {
-    window.clearTimeout(cinematicTimer);
-  }
-
-  cinematicTimer = window.setTimeout(() => {
-    stopSpeech();
-    cinematicOverlay.classList.add("hidden");
-    switchScreen(nextScreen);
-    cinematicTimer = null;
-  }, duration);
 }
 
 function hideUnlockSplash() {
@@ -1240,7 +1103,7 @@ function openLevel(levelId) {
 
   lessonPanel.classList.remove("hidden");
   updateCompleteButton(level);
-  playCinematic(getCinematicMessage("enter", level.id), "level", level.id === 5 ? 980 : 820, "enter", level.id);
+  switchScreen("level");
 }
 
 function completeLevel() {
@@ -1266,7 +1129,7 @@ function completeLevel() {
 
   saveState();
   renderAll();
-  playCinematic(getCinematicMessage("complete", level.id), "map", 900, "complete", level.id);
+  switchScreen("map");
 }
 
 function renderAll() {
@@ -1290,14 +1153,14 @@ completeBtn.addEventListener("click", completeLevel);
 if (startGameBtn) {
   startGameBtn.addEventListener("click", () => {
     playSound("click");
-    playCinematic(getCinematicMessage("intro"), "map", 780, "intro");
+    switchScreen("map");
   });
 }
 
 if (backToMapBtn) {
   backToMapBtn.addEventListener("click", () => {
     playSound("click");
-    playCinematic(getCinematicMessage("back", state.activeLevel), "map", 700, "back", state.activeLevel);
+    switchScreen("map");
   });
 }
 
@@ -1316,18 +1179,6 @@ if (soundToggleBtn) {
     if (state.uiPrefs.sound) {
       playSound("click");
     }
-  });
-}
-
-if (announcerToggleBtn) {
-  announcerToggleBtn.addEventListener("click", () => {
-    state.uiPrefs.announcer = !state.uiPrefs.announcer;
-    if (!state.uiPrefs.announcer) {
-      stopSpeech();
-    }
-    saveState();
-    updateFxButtons();
-    playSound("click");
   });
 }
 
@@ -1356,9 +1207,6 @@ window.addEventListener(
   },
   { once: true },
 );
-window.speechSynthesis?.addEventListener?.("voiceschanged", () => {
-  selectedVoice = resolveSpanishVoice();
-});
 
 loadState();
 initPersonalization();
